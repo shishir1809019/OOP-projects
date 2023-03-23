@@ -46,6 +46,7 @@ class Innings:
         self.currentBowler = None
         self.currentOverStatus = []
         self.allOverStatus = []
+        self.target = None
     def show_score_board(self):
         print(f"*{self.currentBattingList[0].playerName} - {self.currentBattingList[0].runBat}({self.currentBattingList[0].ballUsed})", end="\t")
         print(f"{self.currentBattingList[1].playerName} - {self.currentBattingList[1].runBat}({self.currentBattingList[1].ballUsed})")
@@ -53,6 +54,19 @@ class Innings:
         print(f"Overs: {self.totalOver}.{self.currentBall}")
         if self.currentBowler is not None:
             print(f"{self.currentBowler.playerName} - {self.currentBowler.runBowl}/{self.currentBowler.wicketTaken}")
+        if self.currentBall>0:
+            print("Current over- ", end="")
+            for i in self.currentOverStatus:
+                print(i, end=" ")
+            print()
+        if self.currentBall==0 and self.totalOver > 0:
+            print("Last over- ", end="")
+            for i in self.allOverStatus[-1]:
+                print(i, end=" ")
+            print()
+        if self.target is not None:
+            print(f"Target - {self.target}")
+            print(f"Need {self.target - self.totalRun} runs in {12 - (self.totalOver*6 + self.currentBall)}")
     def set_bowler(self, bowlerObj):
         self.currentBowler = bowlerObj
     def bowl(self, status):
@@ -82,6 +96,9 @@ class Innings:
                     willStrikeChange = True
 
         self.totalRun += run + extraRun
+        if self.target is not None:
+            if self.totalRun >= self.target:
+                return "end"
         self.striker.runBat += run
         if run == 4:
             self.striker.fours += 1
@@ -101,10 +118,10 @@ class Innings:
                 willStrikeChange = True
                 self.allOverStatus.append(self.currentOverStatus)
                 self.currentOverStatus = []
-        if willStrikeChange == True:
-            self.currentBattingList[0], self.currentBattingList[1] = self.currentBattingList[1], self.currentBattingList[0]
-            self.striker = self.currentBattingList[0]
+
         if isWicketDown == True:
+            if self.totalWickets == 1:
+                return "end"
             print()
             print(f"{self.striker.playerName}\t{self.striker.runBat}/{self.striker.ballUsed}")
             print(f"Strike rate - {self.striker.runBat*100/self.striker.ballUsed}")
@@ -115,6 +132,10 @@ class Innings:
             self.striker = self.currentBattingList[0]
             self.totalWickets+=1
             self.currentBowler.wicketTaken += 1
+        if willStrikeChange == True:
+            self.currentBattingList[0], self.currentBattingList[1] = self.currentBattingList[1], self.currentBattingList[0]
+            self.striker = self.currentBattingList[0]
+        return ""
         
 
 cup = T2Cup()
@@ -156,6 +177,7 @@ while True:
 
     over = 0
     while over<2:
+        off =False
         print("Choose bowler: ")
         for i, val in enumerate(bowlingTeamObj.playersListOfObj):
             print(f"{i+1}. {val.playerName}")
@@ -167,11 +189,50 @@ while True:
 
         while True:
             status = input("Enter Status: ")
-            firstInnings.bowl(status)
+            rcv = firstInnings.bowl(status)
+            if rcv == "end":
+                off = True
+                break
             firstInnings.show_score_board()
             if (firstInnings.totalOver * 6 + firstInnings.currentBall) % 6 == 0:
                 break
         over+=1
+        if off == True:
+            break
+    print(f"Target is {firstInnings.totalRun+1}")
+    
+    battingTeamObj, bowlingTeamObj = bowlingTeamObj, battingTeamObj
+    secondInnings = Innings(teamOneObj, teamTwoIndex, battingTeamObj, bowlingTeamObj)
+    secondInnings.target = firstInnings.totalRun + 1
+
+    over = 0
+    while over<2:
+        off =False
+        print("Choose bowler: ")
+        for i, val in enumerate(bowlingTeamObj.playersListOfObj):
+            print(f"{i+1}. {val.playerName}")
+        bowlerIndex = int(input("Enter bowler index: "))
+        bowlerIndex -= 1
+        bowlerObj = bowlingTeamObj.playersListOfObj[bowlerIndex]
+        secondInnings.set_bowler(bowlerObj)
+
+
+        while True:
+            status = input("Enter Status: ")
+            rcv = secondInnings.bowl(status)
+            if rcv == "end":
+                off = True
+                break
+            secondInnings.show_score_board()
+            if (secondInnings.totalOver * 6 + secondInnings.currentBall) % 6 == 0:
+                break
+        over+=1
+        if off == True:
+            break
+    if secondInnings.totalRun == secondInnings.target:
+        print(f"{secondInnings.battingTeam.teamName} wins")
+    else:
+        print(f"{secondInnings.bowlingTeam.teamName} wins")
 
     break
 # print(bangladesh.playersListOfObj)
